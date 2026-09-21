@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { closestCorners, DndContext, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext } from '@dnd-kit/sortable'
 import { useNavigate } from 'react-router-dom'
@@ -15,6 +15,7 @@ import ProxyCard from './proxy-card'
 import ResourceCard from './resource-card'
 import RuleCard from './rule-card'
 import SniffCard from './sniff-card'
+import StatsCard from './stats-card'
 import SubStoreCard from './substore-card'
 import SysproxySwitcher from './sysproxy-switcher'
 import TunSwitcher from './tun-switcher'
@@ -28,6 +29,7 @@ const defaultSiderOrder = [
   'sniff',
   'proxy',
   'connection',
+  'stats',
   'profile',
   'mihomo',
   'rule',
@@ -44,6 +46,7 @@ const siderCardRouteMap = {
   'proxy-card': '/proxies',
   'mihomo-core-card': '/mihomo',
   'conn-card': '/connections',
+  'stats-card': '/stats',
   'dns-card': '/dns',
   'sniff-card': '/sniffer',
   'log-card': '/logs',
@@ -64,6 +67,7 @@ const componentMap = {
   proxy: ProxyCard,
   mihomo: MihomoCoreCard,
   connection: ConnCard,
+  stats: StatsCard,
   dns: DNSCard,
   sniff: SniffCard,
   log: LogCard,
@@ -80,15 +84,23 @@ interface Props {
 export default function SiderCards({ iconOnly = false }: Props): React.JSX.Element {
   const { appConfig, patchAppConfig } = useAppConfig()
   const siderOrder = appConfig?.siderOrder ?? defaultSiderOrder
-  const [order, setOrder] = useState(siderOrder)
+  // 追加新增卡片到已保存的排序末尾
+  const orderedKeys = useMemo(() => {
+    const keys = [...siderOrder]
+    for (const key of defaultSiderOrder) {
+      if (!keys.includes(key)) keys.push(key)
+    }
+    return keys
+  }, [siderOrder])
+  const [order, setOrder] = useState(orderedKeys)
   const suppressClickRef = useRef(false)
   const suppressClickTimerRef = useRef<number | undefined>(undefined)
   const navigate = useNavigate()
   const sensors = useCardDndSensors({ mouseDistance: 8, touchDelay: 220, touchTolerance: 10 })
 
   useEffect(() => {
-    setOrder(siderOrder)
-  }, [siderOrder])
+    setOrder(orderedKeys)
+  }, [orderedKeys])
 
   useLayoutEffect(() => {
     markInitialContentPartReady('sider')

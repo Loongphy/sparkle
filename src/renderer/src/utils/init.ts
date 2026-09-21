@@ -14,7 +14,7 @@ import { getVersion } from './ipc'
 //   originWarn.call(console, args)
 // }
 
-export const platform: NodeJS.Platform = window.api.platform
+export const platform: NodeJS.Platform = window.api?.platform ?? 'win32'
 export let version: string = ''
 
 export async function init(): Promise<void> {

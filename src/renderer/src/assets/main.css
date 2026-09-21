@@ -5,6 +5,47 @@
 @source '../../../../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}';
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  --font-sans:
+    ui-sans-serif,
+    system-ui,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    'HarmonyOS Sans SC',
+    'PingFang SC',
+    'Microsoft YaHei',
+    'Noto Sans CJK SC',
+    'WenQuanYi Micro Hei',
+    sans-serif,
+    'Apple Color Emoji',
+    'Segoe UI Emoji',
+    'Segoe UI Symbol',
+    'Noto Color Emoji';
+}
+
+@font-face {
+  font-family: 'HarmonyOS Sans SC';
+  src: url('./harmonyos-sans-sc-400.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'HarmonyOS Sans SC';
+  src: url('./harmonyos-sans-sc-500.woff2') format('woff2');
+  font-weight: 500 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'HarmonyOS Sans SC';
+  src: url('./harmonyos-sans-sc-700.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+
 @keyframes proxy-row-in {
   from {
     opacity: 0;

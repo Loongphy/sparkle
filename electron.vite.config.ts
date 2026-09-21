@@ -2,12 +2,8 @@ import { resolve } from 'path'
 import { defineConfig } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { systemCoreDefaultPath, systemCoreOnlyBuild, systemServicePath } from './scripts/build-env'
+import { buildDefines, systemCoreOnlyBuild } from './scripts/build-env'
 
-const buildDefines = {
-  __SPARKLE_SYSTEM_CORE_PATH__: JSON.stringify(systemCoreDefaultPath),
-  __SPARKLE_SYSTEM_SERVICE_PATH__: JSON.stringify(systemServicePath)
-}
 const omitExternalRendererResources = {
   name: 'omit-external-renderer-resources',
   enforce: 'pre' as const,

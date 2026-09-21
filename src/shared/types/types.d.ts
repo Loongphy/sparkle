@@ -1,5 +1,6 @@
 declare const __SPARKLE_SYSTEM_CORE_PATH__: string
 declare const __SPARKLE_SYSTEM_SERVICE_PATH__: string
+declare const __SPARKLE_COMMIT_SHA__: string
 
 type OutboundMode = 'rule' | 'global' | 'direct'
 type LogLevel = 'info' | 'debug' | 'warning' | 'error' | 'silent'

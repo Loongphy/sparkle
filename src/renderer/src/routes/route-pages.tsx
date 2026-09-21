@@ -9,6 +9,7 @@ const SettingsPage = createPreloadablePage(() => import('@renderer/pages/setting
 const ProfilesPage = createPreloadablePage(() => import('@renderer/pages/profiles'))
 const LogsPage = createPreloadablePage(() => import('@renderer/pages/logs'))
 const ConnectionsPage = createPreloadablePage(() => import('@renderer/pages/connections'))
+const StatsPage = createPreloadablePage(() => import('@renderer/pages/stats'))
 const MihomoPage = createPreloadablePage(() => import('@renderer/pages/mihomo'))
 const SysproxyPage = createPreloadablePage(() => import('@renderer/pages/syspeoxy'))
 const TunPage = createPreloadablePage(() => import('@renderer/pages/tun'))
@@ -24,6 +25,7 @@ export const Settings = SettingsPage.Page
 export const Profiles = ProfilesPage.Page
 export const Logs = LogsPage.Page
 export const Connections = ConnectionsPage.Page
+export const Stats = StatsPage.Page
 export const Mihomo = MihomoPage.Page
 export const Sysproxy = SysproxyPage.Page
 export const Tun = TunPage.Page
@@ -38,6 +40,7 @@ const remainingPageLoaders: Array<() => Promise<unknown>> = [
   SettingsPage.preload,
   ProfilesPage.preload,
   ConnectionsPage.preload,
+  StatsPage.preload,
   RulesPage.preload,
   MihomoPage.preload,
   SysproxyPage.preload,

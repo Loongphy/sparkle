@@ -20,6 +20,7 @@
     "checksum": "node scripts/checksum.ts",
     "telegram": "node scripts/telegram.ts",
     "dev": "pnpm run ensure:electron && electron-vite dev",
+    "dev:renderer": "vite --config vite.preview.config.ts",
     "postinstall": "pnpm run ensure:electron && electron-builder install-app-deps",
     "build:win": "electron-vite build && electron-builder --publish never --win",
     "build:mac": "electron-vite build && electron-builder --publish never --mac",

@@ -4,6 +4,27 @@
 @source '../../../../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}';
 @custom-variant dark (&:is(.dark *));
 
+@font-face {
+  font-family: 'HarmonyOS Sans SC';
+  src: url('./harmonyos-sans-sc-400.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'HarmonyOS Sans SC';
+  src: url('./harmonyos-sans-sc-500.woff2') format('woff2');
+  font-weight: 500 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'HarmonyOS Sans SC';
+  src: url('./harmonyos-sans-sc-700.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+
 html {
   background: none !important;
   background-color: transparent !important;
@@ -13,6 +34,7 @@ body {
   font-family:
     'Inter',
     'SF Pro Display',
+    'HarmonyOS Sans SC',
     'Microsoft YaHei',
     system-ui,
     -apple-system,
