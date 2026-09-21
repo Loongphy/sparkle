@@ -26,6 +26,8 @@ const SIZES_ATTR_RE = /sizes\s*=\s*["']([^"']+)["']/i
 const MEDIA_LIGHT_RE = /prefers-color-scheme\s*:\s*light/i
 const DARK_DERIVE_TRIES = 5
 const HOMEPAGE_ICON_TRIES = 3
+// 抓取管线升级时递增，使旧版本产生的 miss/darkMiss 负缓存立即失效重试
+const CACHE_V = 1
 
 interface IconIndexEntry {
   file?: string
@@ -35,6 +37,7 @@ interface IconIndexEntry {
   miss?: boolean
   darkMiss?: boolean
   darkAt?: number
+  v?: number
   at: number
 }
 
@@ -268,6 +271,7 @@ async function resolveIcon(host: string, preferDark: boolean): Promise<void> {
   const { faviconServiceFallback = true } = await getAppConfig()
   const entry = (index[host] ??= { at: Date.now() })
   entry.at = Date.now()
+  entry.v = CACHE_V
 
   let homepage: string | undefined
   const getHomepage = async (): Promise<string> => {
@@ -297,7 +301,8 @@ async function resolveIcon(host: string, preferDark: boolean): Promise<void> {
     }
   }
 
-  const darkFresh = !!entry.darkMiss && Date.now() - (entry.darkAt ?? entry.at) < MISS_TTL
+  const darkFresh =
+    !!entry.darkMiss && entry.v === CACHE_V && Date.now() - (entry.darkAt ?? entry.at) < MISS_TTL
   if (preferDark && !fileReady(entry.darkFile) && !darkFresh) {
     entry.darkAt = Date.now()
     try {
@@ -328,9 +333,13 @@ export async function getDomainIcon(domain: string, preferDark = false): Promise
 
   const entry = index[host]
   const pureMiss = !!entry && !!entry.miss && !entry.file && !entry.darkFile
-  const fresh = !!entry && Date.now() - entry.at < (pureMiss ? MISS_TTL : HIT_TTL)
+  const fresh =
+    !!entry && entry.v === CACHE_V && Date.now() - entry.at < (pureMiss ? MISS_TTL : HIT_TTL)
   const needDefault = !fileReady(entry?.file) && !(fresh && entry?.miss)
-  const darkFresh = !!entry?.darkMiss && Date.now() - (entry?.darkAt ?? entry.at) < MISS_TTL
+  const darkFresh =
+    !!entry?.darkMiss &&
+    entry.v === CACHE_V &&
+    Date.now() - (entry.darkAt ?? entry.at) < MISS_TTL
   const needDark = preferDark && !fileReady(entry?.darkFile) && !darkFresh
 
   if (!needDefault && !needDark) return pickIcon(entry, preferDark)
