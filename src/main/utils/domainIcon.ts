@@ -27,60 +27,6 @@ const MEDIA_LIGHT_RE = /prefers-color-scheme\s*:\s*light/i
 const DARK_DERIVE_TRIES = 5
 const HOMEPAGE_ICON_TRIES = 3
 
-// CDN/API 基建域名 → 可抓品牌域名（这些域名本身没有网站，无法直接抓图标）
-const ICON_ALIAS: Record<string, string> = {
-  'githubusercontent.com': 'github.com',
-  'googleapis.com': 'google.com',
-  'gstatic.com': 'google.com',
-  'googlevideo.com': 'google.com',
-  'ggpht.com': 'google.com',
-  'gvt1.com': 'google.com',
-  'gvt2.com': 'google.com',
-  'windows.com': 'microsoft.com',
-  'msftconnecttest.com': 'microsoft.com',
-  'msftncsi.com': 'microsoft.com',
-  'office365.com': 'office.com',
-  'steamserver.net': 'steampowered.com',
-  'steamcontent.com': 'steampowered.com',
-  'steamstatic.com': 'steampowered.com',
-  'zijieapi.com': 'volcengine.com',
-  'volccdn.com': 'volcengine.com',
-  'volces.com': 'volcengine.com',
-  'bytecdn.com': 'volcengine.com',
-  'tiktokcdn.com': 'tiktok.com',
-  'tiktokv.com': 'tiktok.com',
-  'musically.com': 'tiktok.com',
-  'twimg.com': 'x.com',
-  'fbcdn.net': 'facebook.com',
-  'cdninstagram.com': 'instagram.com',
-  'whatsapp.net': 'whatsapp.com',
-  'cloudfront.net': 'aws.amazon.com',
-  'akamaized.net': 'akamai.com',
-  'edgesuite.net': 'akamai.com',
-  'edgekey.net': 'akamai.com',
-  'fastly.net': 'fastly.com',
-  'bilivideo.com': 'bilibili.com',
-  'bilivideo.cn': 'bilibili.com',
-  'hdslb.com': 'bilibili.com',
-  'biliapi.net': 'bilibili.com',
-  'qpic.cn': 'qq.com',
-  'gtimg.com': 'qq.com',
-  'alicdn.com': 'taobao.com',
-  'aliyuncs.com': 'aliyun.com',
-  '360buyimg.com': 'jd.com',
-  'mzstatic.com': 'apple.com',
-  'cdn-apple.com': 'apple.com',
-  'apple-dns.net': 'apple.com',
-  'nflxvideo.net': 'netflix.com',
-  'nflxso.net': 'netflix.com',
-  'nflxext.com': 'netflix.com',
-  'scdn.co': 'spotify.com',
-  'spotifycdn.com': 'spotify.com',
-  'xhscdn.com': 'xiaohongshu.com',
-  'douyucdn.cn': 'douyu.com',
-  'douyucdn.com': 'douyu.com'
-}
-
 interface IconIndexEntry {
   file?: string
   mime?: string
@@ -377,8 +323,7 @@ async function resolveIcon(host: string, preferDark: boolean): Promise<void> {
 
 export async function getDomainIcon(domain: string, preferDark = false): Promise<string> {
   ensureIndex()
-  const etld = etldOf(domain.toLowerCase().trim())
-  const host = ICON_ALIAS[etld] ?? etld
+  const host = etldOf(domain.toLowerCase().trim())
   if (isIpAddress(host) || !DOMAIN_RE.test(host)) return ''
 
   const entry = index[host]
