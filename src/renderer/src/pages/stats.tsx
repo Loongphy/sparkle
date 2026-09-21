@@ -85,6 +85,15 @@ const Stats: React.FC = () => {
   pausedRef.current = paused
   const livePrevRef = useRef(new Map<string, { down: number; up: number }>())
 
+  const isDirectConn = useCallback(
+    (c: ControllerConnectionDetail) => !c.chains?.length || c.chains.includes('DIRECT'),
+    []
+  )
+  const effectiveLiveConns = useMemo(
+    () => (statsHideDirect ? liveConns.filter((c) => !isDirectConn(c)) : liveConns),
+    [liveConns, statsHideDirect, isDirectConn]
+  )
+
   useEffect(() => {
     const handler = (_e: unknown, info: ControllerConnections): void => {
       if (pausedRef.current) return
@@ -117,7 +126,7 @@ const Stats: React.FC = () => {
 
   const liveDomainMap = useMemo(() => {
     const map = new Map<string, ControllerConnectionDetail[]>()
-    for (const conn of liveConns) {
+    for (const conn of effectiveLiveConns) {
       const { key, isIp } = connDomainKey(conn.metadata)
       const ip = isIp || key === UNKNOWN_DOMAIN
       const gk = statsDomainMode === 'etld' ? (ip ? IP_GROUP_NAME : etldOf(key)) : key
@@ -126,22 +135,22 @@ const Stats: React.FC = () => {
       map.set(gk, arr)
     }
     return map
-  }, [liveConns, statsDomainMode])
+  }, [effectiveLiveConns, statsDomainMode])
 
   const liveHostMap = useMemo(() => {
     const map = new Map<string, ControllerConnectionDetail[]>()
-    for (const conn of liveConns) {
+    for (const conn of effectiveLiveConns) {
       const { key } = connDomainKey(conn.metadata)
       const arr = map.get(key) ?? []
       arr.push(conn)
       map.set(key, arr)
     }
     return map
-  }, [liveConns])
+  }, [effectiveLiveConns])
 
   const liveAppMap = useMemo(() => {
     const map = new Map<string, ControllerConnectionDetail[]>()
-    for (const conn of liveConns) {
+    for (const conn of effectiveLiveConns) {
       const md = conn.metadata
       const key = md.processPath || md.process || '(unknown)'
       const arr = map.get(key) ?? []
@@ -149,7 +158,7 @@ const Stats: React.FC = () => {
       map.set(key, arr)
     }
     return map
-  }, [liveConns])
+  }, [effectiveLiveConns])
 
   const openLiveConns = useCallback(
     (
@@ -165,9 +174,11 @@ const Stats: React.FC = () => {
   const liveModalConns = useMemo(() => {
     if (!liveSel) return []
     const pool =
-      liveSel.appKey !== undefined ? (liveAppMap.get(liveSel.appKey) ?? []) : liveConns
+      liveSel.appKey !== undefined
+        ? (liveAppMap.get(liveSel.appKey) ?? [])
+        : effectiveLiveConns
     return pool.filter((c) => connDomainKey(c.metadata).key === liveSel.host)
-  }, [liveSel, liveConns, liveAppMap])
+  }, [liveSel, effectiveLiveConns, liveAppMap])
 
   useEffect(() => {
     let mounted = true
@@ -321,8 +332,44 @@ const Stats: React.FC = () => {
 
   const rows = useMemo(() => {
     let list = rawRows
-    if (tab === 'domain' && statsHideDirect) {
-      list = list.filter((r) => !(r as TrafficDomainStat).isIp)
+    if (statsHideDirect) {
+      const strip = <T extends TrafficStatChild>(r: T): T => {
+        if (!r.routes?.some((rt) => rt.direct)) return r
+        const d = r.routes
+          .filter((rt) => rt.direct)
+          .reduce(
+            (a, rt) => ({
+              down: a.down + rt.down,
+              up: a.up + rt.up,
+              conns: a.conns + rt.conns
+            }),
+            { down: 0, up: 0, conns: 0 }
+          )
+        return {
+          ...r,
+          down: r.down - d.down,
+          up: r.up - d.up,
+          conns: r.conns - d.conns,
+          routes: r.routes.filter((rt) => !rt.direct)
+        }
+      }
+      const keepChild = (c: TrafficStatChild): boolean => c.down + c.up > 0 || c.conns > 0
+      list = list
+        .map((r) => {
+          const out = { ...strip(r) }
+          if ('children' in out && out.children) {
+            out.children = out.children.map(strip).filter(keepChild)
+          }
+          if ('domains' in out && out.domains) {
+            out.domains = out.domains.map(strip).filter(keepChild)
+          }
+          return out
+        })
+        .filter((r) => {
+          if (r.down + r.up > 0 || r.conns > 0) return true
+          const key = tab === 'app' ? (r as TrafficAppStat).key : r.name
+          return (tab === 'app' ? liveAppMap : liveDomainMap).has(key)
+        })
     }
     if (filter !== '') {
       list = list.filter((r) => {
@@ -352,7 +399,7 @@ const Stats: React.FC = () => {
       }
     }
     return [...list].sort((a, b) => (val(a) - val(b)) * dir)
-  }, [rawRows, filter, statsSortBy, statsSortDir, statsHideDirect, tab])
+  }, [rawRows, filter, statsSortBy, statsSortDir, statsHideDirect, tab, liveAppMap, liveDomainMap])
 
   const maxRowTotal = useMemo(
     () => rows.reduce((m, r) => Math.max(m, r.down + r.up), 0),
@@ -463,10 +510,11 @@ const Stats: React.FC = () => {
                   <StatChildRow
                     key={d.name}
                     name={d.name}
-                    sub={clive.length ? `${clive.length} 活跃` : undefined}
+                    sub={`${d.conns} 连接${clive.length ? ` · ${clive.length} 活跃` : ''}`}
                     down={d.down}
                     up={d.up}
                     live={clive}
+                    routes={d.routes}
                     onOpen={
                       clive.length
                         ? () => openLiveConns(clive, { host: d.name, appKey: app.key, iconUrl })
@@ -542,6 +590,7 @@ const Stats: React.FC = () => {
                   down={c.down}
                   up={c.up}
                   live={clive}
+                  routes={c.routes}
                   onOpen={
                     clive.length
                       ? () => openLiveConns(clive, { host: c.name, iconUrl: domIconUrl })
@@ -599,6 +648,29 @@ const Stats: React.FC = () => {
 
   const domainCount = data?.domains.length ?? 0
   const appCount = data?.apps.length ?? 0
+
+  const directTotals = useMemo(() => {
+    let down = 0
+    let up = 0
+    let conns = 0
+    for (const d of data?.domains ?? []) {
+      for (const rt of d.routes ?? []) {
+        if (rt.direct) {
+          down += rt.down
+          up += rt.up
+          conns += rt.conns
+        }
+      }
+    }
+    return { down, up, conns }
+  }, [data])
+  const showTotals = statsHideDirect
+    ? {
+        down: (data?.totalDown ?? 0) - directTotals.down,
+        up: (data?.totalUp ?? 0) - directTotals.up,
+        conns: (data?.totalConns ?? 0) - directTotals.conns
+      }
+    : { down: data?.totalDown ?? 0, up: data?.totalUp ?? 0, conns: data?.totalConns ?? 0 }
 
   return (
     <>
@@ -777,13 +849,13 @@ const Stats: React.FC = () => {
         <Card className="px-3 py-2 gap-1">
           <div className="text-xs text-foreground-500">累计下载</div>
           <div className="text-lg font-bold text-primary tabular-nums">
-            ↓ {calcTraffic(data?.totalDown ?? 0)}
+            ↓ {calcTraffic(showTotals.down)}
           </div>
         </Card>
         <Card className="px-3 py-2 gap-1">
           <div className="text-xs text-foreground-500">累计上传</div>
           <div className="text-lg font-bold text-success tabular-nums">
-            ↑ {calcTraffic(data?.totalUp ?? 0)}
+            ↑ {calcTraffic(showTotals.up)}
           </div>
         </Card>
         <Card className="px-3 py-2 gap-1">
@@ -795,7 +867,7 @@ const Stats: React.FC = () => {
         <Card className="px-3 py-2 gap-1">
           <div className="text-xs text-foreground-500">累计连接</div>
           <div className="text-lg font-bold tabular-nums">
-            {(data?.totalConns ?? 0).toLocaleString()}
+            {showTotals.conns.toLocaleString()}
           </div>
         </Card>
       </div>

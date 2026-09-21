@@ -4,17 +4,27 @@ import path from 'path'
 import { connDomainKey, etldOf, IP_GROUP_NAME, isIpAddress, UNKNOWN_DOMAIN } from '../../shared/domain'
 import { trafficStatsPath } from '../utils/dirs'
 
+interface RouteBucket {
+  rule: string
+  node: string
+  direct: boolean
+  down: number
+  up: number
+  conns: number
+}
+
 interface StatBucket {
   down: number
   up: number
   conns: number
   last: number
+  routes?: Record<string, RouteBucket>
 }
 
 interface AppBucket extends StatBucket {
   name: string
   path: string
-  domains: Record<string, { down: number; up: number }>
+  domains: Record<string, StatBucket>
 }
 
 interface DayStats {
@@ -32,6 +42,8 @@ const MAX_APP_DOMAINS = 200
 const OTHER_APP_DOMAIN = '(其他)'
 const SAVE_INTERVAL = 15000
 const MAX_CHILDREN = 20
+const MAX_ROUTES = 10
+const OTHER_ROUTE = '(其他)'
 
 let loaded = false
 let stats: TrafficStatsFile = { version: 1, days: {} }
@@ -70,10 +82,52 @@ function appKeyOf(md: ControllerConnectionDetail['metadata']): {
   return { key: procPath || procName, name: procName || path.basename(procPath), path: procPath }
 }
 
+function routeOf(conn: ControllerConnectionDetail): {
+  key: string
+  rule: string
+  node: string
+  direct: boolean
+} {
+  const node = conn.chains?.[0] || 'DIRECT'
+  const direct = !conn.chains?.length || conn.chains.includes('DIRECT')
+  const rule = conn.rule
+    ? `${conn.rule}${conn.rulePayload ? ` (${conn.rulePayload})` : ''}`
+    : direct
+      ? 'DIRECT'
+      : ''
+  return { key: `${rule}|${node}`, rule, node, direct }
+}
+
+function addRoute(
+  b: { routes?: Record<string, RouteBucket> },
+  rt: { key: string; rule: string; node: string; direct: boolean },
+  dUp: number,
+  dDown: number,
+  isNew: boolean
+): void {
+  const routes = (b.routes ??= {})
+  let key = rt.key
+  if (!routes[key] && Object.keys(routes).length >= MAX_ROUTES) {
+    key = rt.direct ? `${OTHER_ROUTE}|DIRECT` : OTHER_ROUTE
+  }
+  const slot = (routes[key] ??= {
+    rule: key === OTHER_ROUTE || key === `${OTHER_ROUTE}|DIRECT` ? OTHER_ROUTE : rt.rule,
+    node: key === OTHER_ROUTE || key === `${OTHER_ROUTE}|DIRECT` ? '' : rt.node,
+    direct: key === `${OTHER_ROUTE}|DIRECT` ? true : key === OTHER_ROUTE ? false : rt.direct,
+    down: 0,
+    up: 0,
+    conns: 0
+  })
+  slot.down += dDown
+  slot.up += dUp
+  if (isNew) slot.conns += 1
+}
+
 function addToDay(
   day: DayStats,
   dKey: string,
   appInfo: { key: string; name: string; path: string },
+  rt: { key: string; rule: string; node: string; direct: boolean },
   dUp: number,
   dDown: number,
   now: number,
@@ -84,6 +138,7 @@ function addToDay(
   dom.up += dUp
   dom.last = now
   if (isNew) dom.conns += 1
+  addRoute(dom, rt, dUp, dDown, isNew)
 
   const app = (day.apps[appInfo.key] ??= {
     down: 0,
@@ -100,15 +155,19 @@ function addToDay(
   app.name = appInfo.name
   app.path = appInfo.path
   if (isNew) app.conns += 1
+  addRoute(app, rt, dUp, dDown, isNew)
 
   const dmap = app.domains
   let slot = dmap[dKey]
   if (!slot) {
     const capped = Object.keys(dmap).length >= MAX_APP_DOMAINS
-    slot = dmap[capped ? OTHER_APP_DOMAIN : dKey] ??= { down: 0, up: 0 }
+    slot = dmap[capped ? OTHER_APP_DOMAIN : dKey] ??= { down: 0, up: 0, conns: 0, last: 0 }
   }
   slot.down += dDown
   slot.up += dUp
+  slot.last = now
+  if (isNew) slot.conns += 1
+  addRoute(slot, rt, dUp, dDown, isNew)
 }
 
 function ensureLoaded(): void {
@@ -187,8 +246,9 @@ export function ingestConnectionsSnapshot(info: ControllerConnections): void {
       prev.down = conn.download
     }
     if (!isNew && dUp === 0 && dDown === 0) continue
-    addToDay(day, dom.key, appInfo, dUp, dDown, now, isNew)
-    addToDay(session, dom.key, appInfo, dUp, dDown, now, isNew)
+    const rt = routeOf(conn)
+    addToDay(day, dom.key, appInfo, rt, dUp, dDown, now, isNew)
+    addToDay(session, dom.key, appInfo, rt, dUp, dDown, now, isNew)
     dirty = true
     updatedAt = now
   }
@@ -211,6 +271,19 @@ function collectDays(range: TrafficStatsRange): DayStats[] {
   return days
 }
 
+function mergeRoutes(
+  dst: Record<string, RouteBucket>,
+  src: Record<string, RouteBucket> | undefined
+): void {
+  if (!src) return
+  for (const [key, r] of Object.entries(src)) {
+    const slot = (dst[key] ??= { ...r, down: 0, up: 0, conns: 0 })
+    slot.down += r.down
+    slot.up += r.up
+    slot.conns += r.conns
+  }
+}
+
 function mergeDays(days: DayStats[]): { domains: Record<string, StatBucket>; apps: Record<string, AppBucket> } {
   const domains: Record<string, StatBucket> = {}
   const apps: Record<string, AppBucket> = {}
@@ -221,6 +294,7 @@ function mergeDays(days: DayStats[]): { domains: Record<string, StatBucket>; app
       d.up += s.up
       d.conns += s.conns
       d.last = Math.max(d.last, s.last)
+      mergeRoutes((d.routes ??= {}), s.routes)
     }
     for (const [key, s] of Object.entries(day.apps)) {
       const a = (apps[key] ??= {
@@ -236,28 +310,39 @@ function mergeDays(days: DayStats[]): { domains: Record<string, StatBucket>; app
       a.up += s.up
       a.conns += s.conns
       a.last = Math.max(a.last, s.last)
+      mergeRoutes((a.routes ??= {}), s.routes)
       if (s.last >= a.last) {
         a.name = s.name
         a.path = s.path
       }
       for (const [dn, ds] of Object.entries(s.domains)) {
-        const slot = (a.domains[dn] ??= { down: 0, up: 0 })
+        const slot = (a.domains[dn] ??= { down: 0, up: 0, conns: 0, last: 0 })
         slot.down += ds.down
         slot.up += ds.up
+        slot.conns += ds.conns
+        slot.last = Math.max(slot.last, ds.last)
+        mergeRoutes((slot.routes ??= {}), ds.routes)
       }
     }
   }
   return { domains, apps }
 }
 
-function toChildren(map: Record<string, StatBucket | { down: number; up: number }>): TrafficStatChild[] {
+function toRouteList(routes: Record<string, RouteBucket> | undefined): TrafficRouteStat[] | undefined {
+  if (!routes) return undefined
+  const list = Object.values(routes).sort((a, b) => b.down + b.up - (a.down + a.up))
+  return list.length ? list : undefined
+}
+
+function toChildren(map: Record<string, StatBucket>): TrafficStatChild[] {
   return Object.entries(map)
     .map(([name, s]) => ({
       name,
       down: s.down,
       up: s.up,
-      conns: 'conns' in s ? s.conns : 0,
-      last: 'last' in s ? s.last : 0
+      conns: s.conns,
+      last: s.last,
+      routes: toRouteList(s.routes)
     }))
     .sort((a, b) => b.down + b.up - (a.down + a.up))
     .slice(0, MAX_CHILDREN)
@@ -282,19 +367,24 @@ export async function getTrafficStats(
     }
     domains = [...groups.entries()].map(([name, g]) => {
       const children = Object.values(g.children)
+      const routes: Record<string, RouteBucket> = {}
       const agg = children.reduce(
-        (acc, c) => ({
-          down: acc.down + c.down,
-          up: acc.up + c.up,
-          conns: acc.conns + c.conns,
-          last: Math.max(acc.last, c.last)
-        }),
+        (acc, c) => {
+          mergeRoutes(routes, c.routes)
+          return {
+            down: acc.down + c.down,
+            up: acc.up + c.up,
+            conns: acc.conns + c.conns,
+            last: Math.max(acc.last, c.last)
+          }
+        },
         { down: 0, up: 0, conns: 0, last: 0 }
       )
       return {
         name,
         isIp: g.isIp,
         ...agg,
+        routes: toRouteList(routes),
         children: toChildren(g.children)
       }
     })
@@ -302,7 +392,11 @@ export async function getTrafficStats(
     domains = Object.entries(merged.domains).map(([name, s]) => ({
       name,
       isIp: isIpAddress(name) || name === UNKNOWN_DOMAIN,
-      ...s
+      down: s.down,
+      up: s.up,
+      conns: s.conns,
+      last: s.last,
+      routes: toRouteList(s.routes)
     }))
   }
   domains.sort((a, b) => b.down + b.up - (a.down + a.up))
@@ -316,6 +410,7 @@ export async function getTrafficStats(
       up: a.up,
       conns: a.conns,
       last: a.last,
+      routes: toRouteList(a.routes),
       domains: toChildren(a.domains)
     }))
     .sort((a, b) => b.down + b.up - (a.down + a.up))

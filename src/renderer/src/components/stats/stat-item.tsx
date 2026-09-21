@@ -120,8 +120,9 @@ export const StatChildRow: React.FC<{
   down: number
   up: number
   live?: ControllerConnectionDetail[]
+  routes?: TrafficRouteStat[]
   onOpen?: () => void
-}> = ({ name, sub, down, up, live, onOpen }) => {
+}> = ({ name, sub, down, up, live, routes, onOpen }) => {
   const total = down + up
   const liveConns = live ?? []
   const liveDownSpeed = liveConns.reduce((s, c) => s + (c.downloadSpeed ?? 0), 0)
@@ -133,6 +134,12 @@ export const StatChildRow: React.FC<{
         .map((c) => (c.rule ? `${c.rule}${c.rulePayload ? ` (${c.rulePayload})` : ''}` : ''))
         .filter(Boolean)
     )
+  ]
+  const nodes = [
+    ...new Set([...liveNodes, ...(routes ?? []).map((r) => r.node).filter(Boolean)])
+  ]
+  const rules = [
+    ...new Set([...liveRules, ...(routes ?? []).map((r) => r.rule).filter(Boolean)])
   ]
   return (
     <div
@@ -160,9 +167,9 @@ export const StatChildRow: React.FC<{
         )}
       </div>
       <div className="hidden lg:flex flex-1 min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
-        {!!liveNodes.length && (
+        {!!nodes.length && (
           <div className="flex flex-wrap items-center gap-1">
-            {liveNodes.map((n) => (
+            {nodes.map((n) => (
               <Chip
                 key={n}
                 size="sm"
@@ -176,9 +183,9 @@ export const StatChildRow: React.FC<{
             ))}
           </div>
         )}
-        {!!liveRules.length && (
+        {!!rules.length && (
           <div className="flex flex-wrap items-center gap-1">
-            {liveRules.map((r) => (
+            {rules.map((r) => (
               <Chip
                 key={r}
                 size="sm"
