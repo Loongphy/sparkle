@@ -103,8 +103,14 @@ const StatItemComponent: React.FC<StatRowProps> = ({
           <div className="w-40 text-right flex-none tabular-nums flex items-center justify-end gap-2">
             <div className="text-[13px] font-bold">{calcTraffic(total)}</div>
             <div className="w-20">
-              <div className="text-xs text-success whitespace-nowrap">↑ {calcTraffic(up)}</div>
-              <div className="text-xs text-primary whitespace-nowrap">↓ {calcTraffic(down)}</div>
+              <div className="text-xs text-success whitespace-nowrap flex justify-between gap-1">
+                <span>↑</span>
+                <span>{calcTraffic(up)}</span>
+              </div>
+              <div className="text-xs text-primary whitespace-nowrap flex justify-between gap-1">
+                <span>↓</span>
+                <span>{calcTraffic(down)}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -203,9 +209,15 @@ export const StatChildRow: React.FC<{
       </div>
       <div className="w-40 text-right flex-none tabular-nums flex items-center justify-end gap-2">
         <div className="text-[12px] font-medium">{calcTraffic(total)}</div>
-        <div className="w-16 text-right">
-          <div className="text-[10px] text-success whitespace-nowrap">↑{calcTraffic(up)}</div>
-          <div className="text-[10px] text-primary whitespace-nowrap">↓{calcTraffic(down)}</div>
+        <div className="w-16">
+          <div className="text-[10px] text-success whitespace-nowrap flex justify-between gap-1">
+            <span>↑</span>
+            <span>{calcTraffic(up)}</span>
+          </div>
+          <div className="text-[10px] text-primary whitespace-nowrap flex justify-between gap-1">
+            <span>↓</span>
+            <span>{calcTraffic(down)}</span>
+          </div>
         </div>
       </div>
     </div>
