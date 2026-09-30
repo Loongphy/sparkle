@@ -214,6 +214,10 @@ export function substoreLogPath(): string {
   return datedLogPath('sub-store')
 }
 
+export function trafficStatsPath(): string {
+  return path.join(dataDir(), 'traffic-stats.json')
+}
+
 function hasCommand(command: string): boolean {
   try {
     const isWin = process.platform === 'win32'

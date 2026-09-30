@@ -13,6 +13,7 @@ import {
   Rules,
   Settings,
   Sniffer,
+  Stats,
   SubStore,
   Sysproxy,
   Tun
@@ -71,6 +72,10 @@ const routes = [
   {
     path: '/connections',
     element: startupRoute(<Connections />)
+  },
+  {
+    path: '/stats',
+    element: startupRoute(<Stats />)
   },
   {
     path: '/override',

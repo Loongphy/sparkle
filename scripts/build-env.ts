@@ -1,3 +1,4 @@
+import { execSync } from 'child_process'
 import path from 'path'
 
 const systemCoreBuildValue = process.env.SPARKLE_SYSTEM_CORE?.trim() || ''
@@ -28,3 +29,19 @@ if (
 export const systemCoreDefaultPath = process.platform === 'linux' ? configuredSystemCorePath : ''
 export const systemCoreOnlyBuild = systemCoreDefaultPath !== ''
 export const systemServicePath = systemCoreOnlyBuild ? configuredSystemServicePath : ''
+
+export const commitSha =
+  process.env.GIT_COMMIT_SHA ??
+  (() => {
+    try {
+      return execSync('git rev-parse --short HEAD').toString().trim()
+    } catch {
+      return ''
+    }
+  })()
+
+export const buildDefines = {
+  __SPARKLE_SYSTEM_CORE_PATH__: JSON.stringify(systemCoreDefaultPath),
+  __SPARKLE_SYSTEM_SERVICE_PATH__: JSON.stringify(systemServicePath),
+  __SPARKLE_COMMIT_SHA__: JSON.stringify(commitSha)
+}

@@ -9,6 +9,7 @@ import { floatingWindow } from '../resolve/floatingWindow'
 import { mihomoIpcPath, serviceIpcPath } from '../utils/dirs'
 import { publishMihomoLog } from '../utils/log'
 import { createSignedServiceAxios, getServiceAuthHeaders } from '../service/api'
+import { ingestConnectionsSnapshot } from './trafficStats'
 
 let axiosIns: AxiosInstance = null!
 let mihomoTrafficWs: WebSocket | null = null
@@ -540,7 +541,9 @@ const mihomoConnections = async (): Promise<void> => {
     const data = e.data as string
     connectionsRetry = 10
     try {
-      mainWindow?.webContents.send('mihomoConnections', JSON.parse(data) as ControllerConnections)
+      const json = JSON.parse(data) as ControllerConnections
+      ingestConnectionsSnapshot(json)
+      mainWindow?.webContents.send('mihomoConnections', json)
     } catch {
       // ignore
     }

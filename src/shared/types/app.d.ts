@@ -56,6 +56,12 @@ interface AppConfig {
   proxyCols: 'auto' | '1' | '2' | '3' | '4'
   connectionDirection: 'asc' | 'desc'
   connectionOrderBy: 'time' | 'upload' | 'download' | 'uploadSpeed' | 'downloadSpeed' | 'process'
+  statsRange?: TrafficStatsRange
+  statsDomainMode?: TrafficStatsDomainMode
+  statsSortBy?: TrafficStatsSortBy
+  statsSortDir?: 'asc' | 'desc'
+  statsHideDirect?: boolean
+  faviconServiceFallback?: boolean
   connectionGroupByProcess?: boolean
   connectionGroupSort?: 'name' | 'count' | 'upload' | 'download' | 'uploadSpeed' | 'downloadSpeed'
   connectionGroupDirection?: 'asc' | 'desc'
@@ -74,6 +80,7 @@ interface AppConfig {
   resourceCardStatus?: CardStatus
   ruleCardStatus?: CardStatus
   sniffCardStatus?: CardStatus
+  statsCardStatus?: CardStatus
   substoreCardStatus?: CardStatus
   sysproxyCardStatus?: CardStatus
   tunCardStatus?: CardStatus

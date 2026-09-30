@@ -22,32 +22,37 @@ if (!window.location.hash) {
   window.history.replaceState(null, '', '#/proxies')
 }
 
-init().then(() => {
-  document.addEventListener('keydown', (e) => {
-    if (platform !== 'darwin' && e.ctrlKey && e.key === 'q') {
-      e.preventDefault()
-      quitApp()
-    }
-    if (platform === 'darwin' && e.metaKey && e.key === 'q') {
-      e.preventDefault()
-      quitApp()
-    }
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      window.close()
-    }
-    if (e.key === 'F12') {
-      e.preventDefault()
-      F12Count++
-      if (F12Count >= 5) {
-        openDevTools()
-        F12Count = 0
-      }
-    }
-  })
-})
+void (async (): Promise<void> => {
+  if (import.meta.env.DEV && !window.electron) {
+    await import('./mock-electron')
+  }
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+  init().then(() => {
+    document.addEventListener('keydown', (e) => {
+      if (platform !== 'darwin' && e.ctrlKey && e.key === 'q') {
+        e.preventDefault()
+        quitApp()
+      }
+      if (platform === 'darwin' && e.metaKey && e.key === 'q') {
+        e.preventDefault()
+        quitApp()
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        window.close()
+      }
+      if (e.key === 'F12') {
+        e.preventDefault()
+        F12Count++
+        if (F12Count >= 5) {
+          openDevTools()
+          F12Count = 0
+        }
+      }
+    })
+  })
+
+  ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <HeroUIProvider>
       <NextThemesProvider attribute="class" enableSystem defaultTheme="dark">
@@ -72,4 +77,5 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       </NextThemesProvider>
     </HeroUIProvider>
   </React.StrictMode>
-)
+  )
+})()

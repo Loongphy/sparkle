@@ -25,6 +25,31 @@ export async function mihomoCloseConnections(name?: string): Promise<void> {
   return ipcErrorWrapper(await window.electron.ipcRenderer.invoke('mihomoCloseConnections', name))
 }
 
+export async function getTrafficStats(
+  range: TrafficStatsRange = 'week',
+  domainMode: TrafficStatsDomainMode = 'etld'
+): Promise<TrafficStatsResult> {
+  return ipcErrorWrapper(
+    await window.electron.ipcRenderer.invoke('getTrafficStats', range, domainMode)
+  )
+}
+
+export async function getTrafficStatsSummary(
+  range: TrafficStatsRange = 'run'
+): Promise<TrafficStatsSummary> {
+  return ipcErrorWrapper(
+    await window.electron.ipcRenderer.invoke('getTrafficStatsSummary', range)
+  )
+}
+
+export async function resetTrafficStats(): Promise<void> {
+  return ipcErrorWrapper(await window.electron.ipcRenderer.invoke('resetTrafficStats'))
+}
+
+export async function getDomainIcon(domain: string, preferDark?: boolean): Promise<string> {
+  return ipcErrorWrapper(await window.electron.ipcRenderer.invoke('getDomainIcon', domain, preferDark))
+}
+
 export async function mihomoRules(): Promise<ControllerRules> {
   return ipcErrorWrapper(await window.electron.ipcRenderer.invoke('mihomoRules'))
 }

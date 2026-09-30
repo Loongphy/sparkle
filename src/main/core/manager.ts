@@ -58,6 +58,7 @@ import {
   isUpdaterFinishedLog
 } from './startup-chain'
 import { createServiceCoreRuntime } from './service-core-runtime'
+import { flushTrafficStats } from './trafficStats'
 
 const ctlParam = process.platform === 'win32' ? '-ext-ctl-pipe' : '-ext-ctl-unix'
 
@@ -622,6 +623,12 @@ export async function stopCore(force = false): Promise<void> {
   }
 
   serviceCoreRuntime.clearStreams()
+
+  try {
+    await flushTrafficStats()
+  } catch (error) {
+    await appendAppLog(`[Manager]: flush traffic stats failed, ${error}\n`)
+  }
 
   const { corePermissionMode = 'elevated' } = await getAppConfig()
   const shouldStopServiceCore = serviceCoreRuntime.isManaged() || corePermissionMode === 'service'

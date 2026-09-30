@@ -23,6 +23,12 @@ import {
   restartMihomoConnections,
   mihomoRulesDisable
 } from '../core/mihomoApi'
+import {
+  flushTrafficStats,
+  getTrafficStats,
+  getTrafficStatsSummary,
+  resetTrafficStats
+} from '../core/trafficStats'
 import { checkAutoRun, disableAutoRun, enableAutoRun } from '../sys/autoRun'
 import {
   getAppConfig,
@@ -132,6 +138,7 @@ import path from 'path'
 import v8 from 'v8'
 import { getGistUrl } from '../resolve/gistApi'
 import { getIconDataURL, getImageDataURL } from './icon'
+import { getDomainIcon } from './domainIcon'
 import { startMonitor } from '../resolve/trafficMonitor'
 import { closeFloatingWindow, showContextMenu, showFloatingWindow } from '../resolve/floatingWindow'
 import { getAppName } from '@uruhalushia/sparkle-native'
@@ -296,6 +303,14 @@ export function registerIpcMainHandlers(): void {
   ipcMain.handle('restartCore', ipcErrorWrapper(restartCore))
   ipcMain.handle('stopCore', ipcErrorWrapper(stopCore))
   ipcMain.handle('restartMihomoConnections', ipcErrorWrapper(restartMihomoConnections))
+  ipcMain.handle('getTrafficStats', (_e, range, domainMode) =>
+    ipcErrorWrapper(getTrafficStats)(range, domainMode)
+  )
+  ipcMain.handle('getTrafficStatsSummary', (_e, range) =>
+    ipcErrorWrapper(getTrafficStatsSummary)(range)
+  )
+  ipcMain.handle('resetTrafficStats', ipcErrorWrapper(resetTrafficStats))
+  ipcMain.handle('flushTrafficStats', ipcErrorWrapper(flushTrafficStats))
   ipcMain.handle('startMonitor', (_e, detached) => ipcErrorWrapper(startMonitor)(detached))
   ipcMain.handle('triggerSysProxy', (_e, enable, onlyActiveDevice, useRegistry) =>
     ipcErrorWrapper(triggerSysProxy)(enable, onlyActiveDevice, useRegistry)
@@ -401,6 +416,9 @@ export function registerIpcMainHandlers(): void {
   ipcMain.handle('getAppName', (_e, appPath) => ipcErrorWrapper(getAppName)(appPath))
   ipcMain.handle('getImageDataURL', (_e, url) => ipcErrorWrapper(getImageDataURL)(url))
   ipcMain.handle('getIconDataURL', (_e, appPath) => ipcErrorWrapper(getIconDataURL)(appPath))
+  ipcMain.handle('getDomainIcon', (_e, domain, preferDark) =>
+    ipcErrorWrapper(getDomainIcon)(domain, preferDark)
+  )
   ipcMain.handle('resolveThemes', () => ipcErrorWrapper(resolveThemes)())
   ipcMain.handle('fetchThemes', () => ipcErrorWrapper(fetchThemes)())
   ipcMain.handle('importThemes', (_e, file) => ipcErrorWrapper(importThemes)(file))
